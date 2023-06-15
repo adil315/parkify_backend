@@ -3,10 +3,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
+
+const secretCode = crypto.randomBytes(32).toString('hex');
+console.log('Secret Code:', secretCode);
 
 // Create Express application
 const app = express();
-
+const session = require('express-session');
 // Configure body-parser middleware
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -26,7 +30,14 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
-
+// Configure session
+app.use(
+  session({
+    secret: 'f5bdeca5d7f6893de827d2b7afcaa66fb2dec349c734bed749b3e75b737072aa', // Replace with your secret key for session encryption
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 // Signup route
 app.post('/signup', async (req, res) => {
   try {
@@ -77,11 +88,29 @@ app.post('/login', async (req, res) => {
     }
 
     // Successful login
-    res.status(200).json({ message: 'Login successful' });
+    // Store user information in session
+    req.session.userId = user._id;
+    req.session.firstName = user.firstName;
+    req.session.lastName = user.lastName;
+    req.session.email = user.email;
+   
+    res.send('Login successful');
+   
+   // res.status(200).json({ message: 'Login successful' });
   } catch (error) {
     console.error('Error during login', error);
     res.status(500).json({ message: 'Internal server error' });
   }
+});
+// Route to access user profile
+app.get('/profile', (req, res) => {
+  // Access user's personalized fields from the session
+  const { userId, firstName, lastName, email } = req.session;
+
+  // Use the user's personalized fields as needed
+  // ...
+
+  res.send('Profile page');
 });
 
 // Start the server
